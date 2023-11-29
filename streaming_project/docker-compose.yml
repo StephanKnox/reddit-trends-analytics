@@ -1,0 +1,103 @@
+version: '3.7'
+
+services:
+  kafka_zookeeper:
+    image: 'zookeeper'
+    ports:
+      - "2181:2181"
+    environment:
+      - ZOOKEPER_CLIENT_PORT=${ZOOKEPER_CLIENT_PORT}
+      - ZOOKEPER_SERVER_ID=${ZOOKEPER_SERVER_ID}
+      - ZOOKEPER_SERVERS=kafka_zookeeper:2888:2888
+    networks:
+      - kafka_network
+      - default
+
+  kafka_1:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka_broker_1
+    depends_on:
+      - kafka_zookeeper
+    environment:
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+      - KAFKA_ZOOKEEPER_CONNECT=kafka_zookeeper:2181
+      - KAFKA_LOG4J_LOGGERS=${KAFKA_LOG4J_LOGGERS}
+      - KAFKA_AUTHORIZER_CLASS_NAME=${KAFKA_AUTHORIZER_CLASS_NAME}
+      - KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=${KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND}
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka_broker_1:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    networks:
+      - kafka_network
+      - default
+
+  # Kafka Connect
+  kafka_connect:
+    image: confluentinc/cp-kafka-connect:latest
+    ports:
+      - "8083:8083"
+    environment:
+      - CONNECT_BOOTSTRAP_SERVERS=${CONNECT_BOOTSTRAP_SERVERS}
+      - CONNECT_REST_PORT=${CONNECT_REST_PORT}
+      - CONNECT_GROUP_ID=${CONNECT_GROUP_ID}
+      - CONNECT_CONFIG_STORAGE_TOPIC=${CONNECT_CONFIG_STORAGE_TOPIC}
+      - CONNECT_OFFSET_STORAGE_TOPIC=${CONNECT_OFFSET_STORAGE_TOPIC}
+      - CONNECT_STATUS_STORAGE_TOPIC=${CONNECT_STATUS_STORAGE_TOPIC}
+      - CONNECT_KEY_CONVERTER=${CONNECT_KEY_CONVERTER}
+      - CONNECT_VALUE_CONVERTER=${CONNECT_VALUE_CONVERTER}
+      - CONNECT_INTERNAL_KEY_CONVERTER=${CONNECT_INTERNAL_KEY_CONVERTER}
+      - CONNECT_INTERNAL_VALUE_CONVERTER=${CONNECT_INTERNAL_VALUE_CONVERTER}
+      - CONNECT_REST_ADVERTISED_HOST_NAME=${CONNECT_REST_ADVERTISED_HOST_NAME}
+      - CONNECT_LOG4J_ROOT_LOGLEVEL=${CONNECT_LOG4J_ROOT_LOGLEVEL}
+      - CONNECT_LOG4J_LOGGERS=${CONNECT_LOG4J_LOGGERS}
+      - CONNECT_PLUGIN_PATH=${CONNECT_PLUGIN_PATH}
+      - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=${CONNECT_STATUS_STORAGE_REPLICATION_FACTOR}
+      - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=${CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR}
+      - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=${CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR}
+    networks:
+      - kafka_network
+      - default
+
+  # Kafka Schema Registry
+  kafka_schema_registry:
+    image: confluentinc/cp-schema-registry:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=${SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS}
+      - SCHEMA_REGISTRY_HOST_NAME=${SCHEMA_REGISTRY_HOST_NAME}
+      - SCHEMA_REGISTRY_LISTENERS=${SCHEMA_REGISTRY_LISTENERS}
+    networks:
+      - kafka_network
+      - default
+
+  # Kafka User Interface
+  kafka_ui:
+    container_name: kafka-ui-1
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8888:8080
+    depends_on:
+      - kafka_1
+      - kafka_schema_registry
+      - kafka_connect
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=${KAFKA_CLUSTERS_0_NAME}
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=${KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS}
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=${KAFKA_CLUSTERS_0_SCHEMAREGISTRY}
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=${KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME}
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=${KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS}
+      - DYNAMIC_CONFIG_ENABLED=${DYNAMIC_CONFIG_ENABLED}
+    networks:
+      - kafka_network
+      - default
+      
+
+#Network for Kafka
+networks:
+  kafka_network:
+    driver: bridge
+  default:
+    external: 
+      name: docker_streaming

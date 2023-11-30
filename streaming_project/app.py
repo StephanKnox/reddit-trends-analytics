@@ -1,8 +1,6 @@
 import pyspark
 from pyspark.sql.functions import *
 
-# launch stream in console command via Net Cat (utility for TCP and UDP on Mac)
-# nc -lk 9999    
 
 def get_spark_session():
         #builder = pyspark.sql.SparkSession.builder.appName("StreamingApp") \

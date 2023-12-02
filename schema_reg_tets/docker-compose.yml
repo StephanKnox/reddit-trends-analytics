@@ -1,0 +1,74 @@
+version: '3.7'
+
+services:
+
+  producer-app:
+    build: .
+    depends_on:
+      - kafka_broker_2
+    #ports:
+     # - "4001:8081"
+    volumes:
+      - ./:/home
+
+  zookeeper:
+    image: 'zookeeper'
+    ports:
+      - "2181:2181"
+    environment:
+      - ZOOKEPER_CLIENT_PORT=${ZOOKEPER_CLIENT_PORT}
+      - ZOOKEPER_SERVER_ID=${ZOOKEPER_SERVER_ID}
+      - ZOOKEPER_SERVERS=zookeeper:2888:2888
+    #networks:
+     # - kafka_network
+    #  - default
+
+  kafka_broker_2:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka_broker_2
+    hostname: kafka_broker_2
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LOG4J_LOGGERS=${KAFKA_LOG4J_LOGGERS}
+      - KAFKA_AUTHORIZER_CLASS_NAME=${KAFKA_AUTHORIZER_CLASS_NAME}
+      - KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=${KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND}
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka_broker_2:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1  
+      - KAKFA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+
+  schemaregistry0:
+    image: confluentinc/cp-schema-registry:7.2.1
+    ports:
+      - 8085:8085
+    depends_on:
+      - kafka_broker_2
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka_broker_2:19092
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry0
+      SCHEMA_REGISTRY_LISTENERS: http://schemaregistry0:8085
+
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8888:8080
+    depends_on:
+      - kafka_broker_2
+      - schemaregistry0
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka_broker_2:19092
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schemaregistry0:8085
+      - DYNAMIC_CONFIG_ENABLED=true

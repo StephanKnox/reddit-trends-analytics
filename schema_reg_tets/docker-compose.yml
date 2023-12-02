@@ -38,13 +38,72 @@ services:
       - KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=${KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND}
       - KAFKA_BROKER_ID=1
       - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka_broker_2:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1  
-      - KAKFA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
     networks:
       - kafka_network
       - default
+
+  kafka_broker_3:
+    image: confluentinc/cp-kafka
+    container_name: kafka_broker_3
+    hostname: kafka_broker_3
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LOG4J_LOGGERS=${KAFKA_LOG4J_LOGGERS}
+      - KAFKA_AUTHORIZER_CLASS_NAME=${KAFKA_AUTHORIZER_CLASS_NAME}
+      - KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=${KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND}
+      - KAFKA_BROKER_ID=2
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka_broker_3:19093,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9093,DOCKER://host.docker.internal:29093
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    networks:
+      - kafka_network
+      - default
+
+  kafka_broker_4:
+    image: confluentinc/cp-kafka
+    container_name: kafka_broker_4
+    hostname: kafka_broker_4
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LOG4J_LOGGERS=${KAFKA_LOG4J_LOGGERS}
+      - KAFKA_AUTHORIZER_CLASS_NAME=${KAFKA_AUTHORIZER_CLASS_NAME}
+      - KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=${KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND}
+      - KAFKA_BROKER_ID=3
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka_broker_4:19094,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9094,DOCKER://host.docker.internal:29094
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    networks:
+      - kafka_network
+      - default
+
+  ksqldb-server1:
+    image: confluentinc/ksqldb-server:0.29.0
+    hostname: ksqldb-server1
+    container_name: ksqldb-server1
+    depends_on:
+      - kafka_broker_2
+      - kafka_broker_3
+      - kafka_broker_4
+      - schemaregistry0
+    ports:
+      - "8088:8088"
+    volumes:
+      - "./extensions/:/opt/ksqldb-udfs"
+    environment:
+      KSQL_LISTENERS: "http://0.0.0.0:8088"
+      KSQL_BOOTSTRAP_SERVERS: PLAINTEXT://kafka_broker_2:19092,PLAINTEXT://kafka_broker_3:19093,PLAINTEXT://kafka_broker_4:19094
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schemaregistry0:8081"
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+      # Configuration for UDFs
+      KSQL_KSQL_EXTENSION_DIR: "/opt/ksqldb-udfs"
 
   schemaregistry0:
     image: confluentinc/cp-schema-registry:7.2.1
@@ -53,7 +112,7 @@ services:
     depends_on:
       - kafka_broker_2
     environment:
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka_broker_2:19092
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka_broker_2:19092,PLAINTEXT://kafka_broker_3:19093,PLAINTEXT://kafka_broker_4:19094
       SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
       SCHEMA_REGISTRY_HOST_NAME: schemaregistry0
       SCHEMA_REGISTRY_LISTENERS: http://schemaregistry0:8085
@@ -75,7 +134,7 @@ services:
       - schemaregistry0
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka_broker_2:19092
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=PLAINTEXT://kafka_broker_2:19092,PLAINTEXT://kafka_broker_3:19093,PLAINTEXT://kafka_broker_4:19094
       - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schemaregistry0:8085
       - DYNAMIC_CONFIG_ENABLED=true
     networks:

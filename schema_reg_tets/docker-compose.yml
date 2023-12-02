@@ -19,12 +19,12 @@ services:
       - ZOOKEPER_CLIENT_PORT=${ZOOKEPER_CLIENT_PORT}
       - ZOOKEPER_SERVER_ID=${ZOOKEPER_SERVER_ID}
       - ZOOKEPER_SERVERS=zookeeper:2888:2888
-    #networks:
-     # - kafka_network
-    #  - default
+    networks:
+      - kafka_network
+      - default
 
   kafka_broker_2:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka
     container_name: kafka_broker_2
     hostname: kafka_broker_2
     depends_on:
@@ -42,6 +42,9 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1  
       - KAKFA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    networks:
+      - kafka_network
+      - default
 
   schemaregistry0:
     image: confluentinc/cp-schema-registry:7.2.1
@@ -58,10 +61,13 @@ services:
       SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
       SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
       SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+    networks:
+      - kafka_network
+      - default
 
   kafka-ui:
     container_name: kafka-ui
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui
     ports:
       - 8888:8080
     depends_on:
@@ -72,3 +78,14 @@ services:
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka_broker_2:19092
       - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schemaregistry0:8085
       - DYNAMIC_CONFIG_ENABLED=true
+    networks:
+      - kafka_network
+      - default
+
+#Network for Kafka
+networks:
+  kafka_network:
+    driver: bridge
+  default:
+    external: true
+    name: docker_kafka_streaming  

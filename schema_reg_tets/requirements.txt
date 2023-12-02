@@ -1,0 +1,16 @@
+argon2-cffi==23.1.0
+argon2-cffi-bindings==21.2.0
+certifi==2023.11.17
+cffi==1.16.0
+confluent-kafka==2.3.0
+distlib==0.3.6
+filelock==3.10.7
+minio==7.2.0
+platformdirs==3.2.0
+psycopg2-binary==2.9.5
+py4j==0.10.9.5
+pycparser==2.21
+pycryptodome==3.19.0
+pyspark==3.3.1
+urllib3==2.1.0
+virtualenv==20.21.0

@@ -13,9 +13,10 @@ services:
       - kafka_network
       - default
 
-  kafka_1:
+  kafka_broker_1:
     image: confluentinc/cp-kafka:latest
     container_name: kafka_broker_1
+    hostname: kafka_broker_1
     depends_on:
       - kafka_zookeeper
     environment:
@@ -28,6 +29,11 @@ services:
       - KAFKA_BROKER_ID=1
       - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka_broker_1:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1  
+      - KAKFA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+
+
     networks:
       - kafka_network
       - default
@@ -60,14 +66,62 @@ services:
       - default
 
   # Kafka Schema Registry
-  kafka_schema_registry:
-    image: confluentinc/cp-schema-registry:latest
+  schemaregistry:
+    image: confluentinc/cp-schema-registry:7.2.1
     ports:
-      - "8081:8081"
+      - 8085:8085
+    depends_on:
+      - kafka_broker_1
     environment:
-      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=${SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS}
-      - SCHEMA_REGISTRY_HOST_NAME=${SCHEMA_REGISTRY_HOST_NAME}
-      - SCHEMA_REGISTRY_LISTENERS=${SCHEMA_REGISTRY_LISTENERS}
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka_broker_1:19092
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry
+      SCHEMA_REGISTRY_LISTENERS: http://schemaregistry:8085
+
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+    networks:
+      - kafka_network
+      - default
+
+  # KSQLDB Server 
+  ksqldb-server:
+    image: confluentinc/ksqldb-server:latest
+    hostname: ksqldb-server
+    container_name: ksqldb-server
+    depends_on:
+      - kafka_zookeeper
+      - kafka_broker_1
+      - schemaregistry
+    ports:
+      - "8088:8088"
+    volumes: 
+      - "./extensions:/opt/ksqldb-udfs"
+    environment:
+      - KSQL_LISTENERS=${KSQL_LISTENERS}
+      - KSQL_BOOTSTRAP_SERVERS=${KSQL_BOOTSTRAP_SERVERS}
+      - KSQL_KSQL_SERVICE_ID=${KSQL_KSQL_SERVICE_ID}
+      - KSQL_KSQL_SCHEMA_REGISTRY_URL={KSQL_KSQL_SCHEMA_REGISTRY_URL}
+      - KSQL_KSQL_LOGGING_PROCESSING_TOPIC_REPLICATION_FACTOR=1
+      - KSQL_KSQL_STREAMS_REPLICATION_FACTOR=1
+      #- KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE=${KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE}
+      #- KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE=${KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE}
+      # Configuration for UDFs
+      - KSQL_KSQL_EXTENSION_DIR=${KSQL_KSQL_EXTENSION_DIR}
+    networks:
+      - kafka_network
+      - default
+
+  # KSQLDB CLI
+  ksqldb-cli:
+    image: confluentinc/ksqldb-cli:latest
+    container_name: ksqldb-cli
+    depends_on:
+      - kafka_broker_1
+      - ksqldb-server
+    entrypoint: /bin/sh
+    tty: true
     networks:
       - kafka_network
       - default
@@ -79,13 +133,15 @@ services:
     ports:
       - 8888:8080
     depends_on:
-      - kafka_1
-      - kafka_schema_registry
+      - kafka_broker_1
+      - schemaregistry
       - kafka_connect
+      - ksqldb-server
     environment:
       - KAFKA_CLUSTERS_0_NAME=${KAFKA_CLUSTERS_0_NAME}
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=${KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS}
       - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=${KAFKA_CLUSTERS_0_SCHEMAREGISTRY}
+      - KAKFA_CLUSTERS_0_KSQLDBSERVER=http://ksqldb-server:8088
       - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=${KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME}
       - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=${KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS}
       - DYNAMIC_CONFIG_ENABLED=${DYNAMIC_CONFIG_ENABLED}
@@ -99,5 +155,7 @@ networks:
   kafka_network:
     driver: bridge
   default:
-    external: 
-      name: docker_streaming
+    external: true
+    name: docker_streaming  
+
+

@@ -2,10 +2,18 @@ import pyspark
 from pyspark.sql.functions import *
 
 
-def get_spark_session():
-        #builder = pyspark.sql.SparkSession.builder.appName("StreamingApp") \
-        #.enableHiveSupport() \
-        #.getOrCreate()
+def get_spark_session(access_key, secret_key, endpoint):
+        builder = pyspark.sql.SparkSession.builder.appName("StreamingApp") \
+        .enableHiveSupport() \
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+        .config('spark.hadoop.fs.s3a.access.key', self.access_key)  \
+        .config('spark.hadoop.fs.s3a.secret.key', self.secret_key)  \
+        .config('spark.hadoop.fs.s3a.endpoint', self.endpoint) \
+        .config("spark.hadoop.fs.s3a.path.style.access", True) \
+        .config('spark.hadoop.fs.s3a.connection.ssl.enabled', "false") \
+        .enableHiveSupport()
+
+
         #.config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         #.config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
         #.config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \

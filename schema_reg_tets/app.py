@@ -7,7 +7,7 @@ import logging
 import sys
 
 
-KAFKA_BOOTSTRAP_SERVERS = ['kafka_broker_2:19092']
+KAFKA_BOOTSTRAP_SERVERS = ['kafka_broker:19092']
 KAFKA_TOPIC = "names_topic" 
 # launch stream in console command via Net Cat (utility for TCP and UDP on Mac)
 # nc -lk 9999    
@@ -16,7 +16,7 @@ KAFKA_TOPIC = "names_topic"
 def configure_kafka(servers=KAFKA_BOOTSTRAP_SERVERS):
     """Creates and returns a Kafka producer instance."""
     settings = {
-        'bootstrap.servers': 'kafka_broker_2:19092',
+        'bootstrap.servers': 'kafka_broker:19092',
         'client.id': 'producer_instance'  
     }
     return Producer(settings)
@@ -39,9 +39,9 @@ def on_delivery(err, msg):
 def retrieve_user_data():
     """Formats the fetched user data for Kafka streaming."""
     return {
-        "name": "Mr Stanislav Kulchitskiy",
-        "gender": "Male",
-        "email": "stas_cool@gmail.com"
+        "name": "Ms. Grace Cho",
+        "gender": "Female",
+        "email": "grace_cho@gmail.com"
     }
 
 
@@ -67,3 +67,4 @@ def main():
         time.sleep(PAUSE_INTERVAL)
     
 main()  
+

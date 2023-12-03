@@ -83,23 +83,42 @@ services:
       - default
 
   # Apache Spark Master Node
-  spark_master:
-    image: bitnami/spark:3
-    container_name: spark_master
-    ports:
-      - 8085:8080
+  spark-master:
+    image: docker.io/bitnami/spark:3.5
+    container_name: spark-master
     environment:
-      - SPARK_UI_PORT=${SPARK_UI_PORT}
-      - SPARK_MODE=${SPARK_MODE}
-      - SPARK_RPC_AUTHENTICATION_ENABLED=${SPARK_RPC_AUTHENTICATION_ENABLED}
-      - SPARK_RPC_ENCRYPTION_ENABLED=${SPARK_RPC_ENCRYPTION_ENABLED}
-    volumes:
-      - ./:/home
-      - spark_data:/opt/bitnami/spark/data
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    ports:
+      - '8080:8080'
     networks:
-      - default
+     # - default
       - kafka_network
+   # extra_hosts:
+    #   - "host.docker.internal:172.17.0.1"
 
+  spark-worker:
+    image: docker.io/bitnami/spark:3.5
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    networks:
+      #- default
+      - kafka_network
+    
 #volumes for data
 volumes:
   spark_data:
@@ -111,3 +130,6 @@ networks:
   default:
     external: true
     name: docker_kafka_streaming  
+
+
+    #spark/172.20.0.4:7077

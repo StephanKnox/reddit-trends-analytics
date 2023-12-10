@@ -3,7 +3,7 @@ import pyspark
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType
-
+#from minio import Minio
 
 S3_ENDPOINT='localhost:9000'
 S3_ACCESS_KEY='Cb5bODHLhocuw9gH'
@@ -31,18 +31,21 @@ def initialize_spark_session(app_name=SPARK_APP, access_key=S3_ACCESS_KEY, secre
     :param secret_key: Secret key for S3.
     :return: Spark session object or None if there's an error.
     """
+    #.master('spark://spark-master:7077') \
     try:
         spark = SparkSession.builder \
         .appName(app_name) \
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
         .config('spark.hadoop.fs.s3a.access.key', S3_ACCESS_KEY)  \
         .config('spark.hadoop.fs.s3a.secret.key', S3_SECRET_KEY)  \
-        .config('spark.hadoop.fs.s3a.endpoint', S3_ENDPOINT) \
+        .config('spark.hadoop.fs.s3a.endpoint', S3_ENDPOINT)  \
+        .config('fs.s3a.connecion.timeout', 30) \
         .config("spark.hadoop.fs.s3a.path.style.access", True) \
         .config('spark.hadoop.fs.s3a.connection.ssl.enabled', "false") \
         .enableHiveSupport().getOrCreate()
+        #.config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+        #.config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
+               #.config('spark.hadoop.fs.s3a.endpoint', S3_ENDPOINT) \
 
         spark.sparkContext.setLogLevel("ERROR")
         logger.info('Spark session initialized successfully')
@@ -68,10 +71,11 @@ def get_streaming_dataframe(spark, brokers=KAFKA_BROKER, topic=KAFKA_TOPIC):
             .format("kafka") \
             .option("kafka.bootstrap.servers", brokers) \
             .option("subscribe", topic) \
-            .option("delimiter", ",") \
             .option("startingOffsets", "earliest") \
+            .option("delimiter", ",") \
             .load()
         logger.info("Streaming dataframe fetched successfully")
+        
         return df
 
     except Exception as e:
@@ -79,8 +83,13 @@ def get_streaming_dataframe(spark, brokers=KAFKA_BROKER, topic=KAFKA_TOPIC):
         return None
 
 def main():
-    path = "/Users/ctac/Desktop/Data Engineer /Projects/spark_structured_streaming_proj/schema_reg_tets"
-    checkpoint_location = "/Users/ctac/Desktop/Data Engineer /Projects/spark_structured_streaming_proj/schema_reg_tets"
+    # Local path wont work, should point to docker volume I guess ?
+    #path = "/opt/bitnami/spark/data"
+    checkpoint_location = "/opt/bitnami/spark/data"
+
+    path = "/opt/bitnami/spark/data"#"s3a://streamingsink"
+
+    
 
     spark = initialize_spark_session(SPARK_APP, S3_ACCESS_KEY, S3_SECRET_KEY)
     if spark:
@@ -88,14 +97,18 @@ def main():
         if df:
             #transformed_df = transform_streaming_data(df)
             #initiate_streaming_to_bucket(transformed_df, path, checkpoint_location)
-            df.show()
-            stream_query = (df.writeStream
-                    .format("parquet")
-                    .outputMode("append")
-                    .option("path", path)
-                    .option("checkpointLocation", checkpoint_location)
-                    .start())
-            stream_query.awaitTermination()
+            #df.show()
+            #logger.warning(f"Objects in streamingsink bucket: {df.count()  }")
+            logger.warning('Starting stream write to bucket ...')
+
+            df.writeStream \
+                    .format("parquet") \
+                    .trigger(processingTime='10 second') \
+                    .option("path", path) \
+                    .option("checkpointLocation", checkpoint_location) \
+                    .start() \
+                    .awaitTermination()
+         
 
 
 # Execute the main function if this script is run as the main module

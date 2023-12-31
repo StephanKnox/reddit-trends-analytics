@@ -1,0 +1,41 @@
+Metadata-Version: 2.1
+Name: delta-spark
+Version: 2.1.0
+Summary: Python APIs for using Delta Lake with Apache Spark
+Home-page: https://github.com/delta-io/delta/
+Author: The Delta Lake Project Authors
+Author-email: delta-users@googlegroups.com
+License: Apache-2.0
+Project-URL: Issues, https://github.com/delta-io/delta/issues
+Project-URL: Documentation, https://docs.delta.io/latest/index.html
+Project-URL: Source, https://github.com/delta-io/delta
+Keywords: delta.io
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Programming Language :: Python :: 3
+Classifier: Typing :: Typed
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: pyspark (<3.4.0,>=3.3.0)
+Requires-Dist: importlib-metadata (>=1.0.0)
+
+# Delta Lake
+
+[Delta Lake](https://delta.io) is an open source storage layer that brings reliability to data lakes. Delta Lake provides ACID transactions, scalable metadata handling, and unifies streaming and batch data processing. Delta Lake runs on top of your existing data lake and is fully compatible with Apache Spark APIs.
+
+This PyPi package contains the Python APIs for using Delta Lake with Apache Spark.
+
+## Installation and usage
+
+1. Install using `pip install delta-spark`
+2. To use the Delta Lake with Apache Spark, you have to set additional configurations when creating the SparkSession. See the online [project web page](https://docs.delta.io/latest/delta-intro.html) for details.
+
+## Documentation
+
+This README file only contains basic information related to pip installed Delta Lake. You can find the full documentation on the [project web page](https://docs.delta.io/latest/delta-intro.html)
+
+

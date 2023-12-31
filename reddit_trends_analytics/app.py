@@ -12,8 +12,8 @@ import os
 
 load_dotenv() 
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS') #= ['kafka_broker:19092']
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC')  #= "names_topic" 
+KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC')  
 
 
 # Create Kafka Producer instance
